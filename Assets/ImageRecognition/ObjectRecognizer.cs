@@ -38,9 +38,9 @@ public class RecognizedObject
 class ObjectRecognizer : IDisposable
 {
     const int _imageSize = 224;
-    const int _imageMean = 117;
+    const int _imageMean = 0;
     const float _imageScale = 1;
-    const float _minScore = 0.2f;
+    const float _minScore = 0.3f;
 
     List<CatalogItem> _catalog;
     private TFGraph _graph;
@@ -81,7 +81,7 @@ class ObjectRecognizer : IDisposable
                     ts.Dispose();
                 }
 
-                return GetBoxes(boxes, scores, classes);
+                return GetDetectedObjects(boxes, scores, classes);
             }
         });
     }
@@ -103,7 +103,7 @@ class ObjectRecognizer : IDisposable
         return TFTensor.FromBuffer(shape, floatValues, 0, floatValues.Length);
     }
 
-    private IEnumerable<RecognizedObject> GetBoxes(float[,,] boxes, float[,] scores, float[,] classes)
+    private IEnumerable<RecognizedObject> GetDetectedObjects(float[,,] boxes, float[,] scores, float[,] classes)
     {
         var x = boxes.GetLength(0);
         var y = boxes.GetLength(1);
