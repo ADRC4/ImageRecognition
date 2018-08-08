@@ -42,7 +42,7 @@ class ObjectRecognizer : IDisposable
     const float _imageScale = 1;
     const float _minScore = 0.3f;
 
-    List<CatalogItem> _catalog;
+    Dictionary<int, CatalogItem> _catalog;
     private TFGraph _graph;
 
     public ObjectRecognizer(byte[] model, string labels)
@@ -50,14 +50,16 @@ class ObjectRecognizer : IDisposable
 #if UNITY_ANDROID
             TensorFlowSharp.Android.NativeBinding.Init();
 #endif
-        _catalog = CatalogUtil.ReadCatalogItems(labels).ToList();
+        _catalog = CatalogUtil.ReadCatalogItems(labels).ToDictionary(l => l.Id);
         _graph = new TFGraph();
         _graph.Import(new TFBuffer(model));
     }
 
+    public static long Delay = 0;
+
     public Task<IEnumerable<RecognizedObject>> DetectAsync(Texture2D texture)
     {
-        var pixels = GetPixels(texture, _imageSize);
+        var pixels = GetPixels(texture);
 
         return Task.Run(() =>
         {
@@ -68,9 +70,13 @@ class ObjectRecognizer : IDisposable
                 runner.AddInput(_graph["image_tensor"][0], tensor)
                       .Fetch(_graph["detection_boxes"][0],
                              _graph["detection_scores"][0],
-                             _graph["detection_classes"][0],
-                             _graph["num_detections"][0]);
+                             _graph["detection_classes"][0]);
+                //  _graph["num_detections"][0]);
+
+                var watch = System.Diagnostics.Stopwatch.StartNew();
                 var output = runner.Run();
+
+                Delay = watch.ElapsedMilliseconds;
 
                 var boxes = (float[,,])output[0].GetValue(jagged: false);
                 var scores = (float[,])output[1].GetValue(jagged: false);
@@ -86,13 +92,13 @@ class ObjectRecognizer : IDisposable
         });
     }
 
-    public TFTensor TransformInput(Color32[] pic)
+    public TFTensor TransformInput(Color32[] pixels)
     {
         byte[] floatValues = new byte[_imageSize * _imageSize * 3];
 
-        for (int i = 0; i < pic.Length; ++i)
+        for (int i = 0; i < pixels.Length; ++i)
         {
-            var color = pic[i];
+            var color = pixels[i];
 
             floatValues[i * 3 + 0] = (byte)((color.r - _imageMean) / _imageScale);
             floatValues[i * 3 + 1] = (byte)((color.g - _imageMean) / _imageScale);
@@ -115,7 +121,8 @@ class ObjectRecognizer : IDisposable
         {
             for (int j = 0; j < y; j++)
             {
-                if (scores[i, j] < _minScore) continue;
+                float score = scores[i, j];
+                if (score < _minScore) continue;
 
                 for (int k = 0; k < z; k++)
                 {
@@ -137,22 +144,25 @@ class ObjectRecognizer : IDisposable
                     }
                 }
 
-                var item = _catalog.First(o => o.Id == Convert.ToInt32(classes[i, j]));
-                yield return new RecognizedObject(xmin, ymin, xmax, ymax, item.DisplayName, scores[i, j]);
+                int id = Convert.ToInt32(classes[i, j]);
+                CatalogItem item;
+
+                if (_catalog.TryGetValue(id, out item))
+                    yield return new RecognizedObject(xmin, ymin, xmax, ymax, item.DisplayName, score);
             }
         }
     }
 
-    public static Color32[] GetPixels(Texture2D tex, int size)
+    public Color32[] GetPixels(Texture2D tex)
     {
-        Rect texR = new Rect(0, 0, size, size);
-        RenderTexture rtt = new RenderTexture(size, size, 32);
+        Rect texR = new Rect(0, 0, _imageSize, _imageSize);
+        RenderTexture rtt = new RenderTexture(_imageSize, _imageSize, 32);
         Graphics.SetRenderTarget(rtt);
         GL.LoadPixelMatrix(0, 1, 1, 0);
         GL.Clear(true, true, new Color(0, 0, 0, 0));
         Graphics.DrawTexture(new Rect(0, 0, 1, 1), tex);
 
-        tex.Resize(size, size);
+        tex.Resize(_imageSize, _imageSize);
         tex.ReadPixels(texR, 0, 0, true);
         //  tex.Apply(true);
 

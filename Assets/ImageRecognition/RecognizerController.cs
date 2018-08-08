@@ -35,7 +35,7 @@ public class RecognizerController : MonoBehaviour
             GUI.Box(recognizedObject.ScreenRectangle(), recognizedObject.ToString());
         }
 
-        GUI.Label(new Rect(20, 20, 400, 40), $"Update time: <b>{_updateTime}</b> ms");
+        GUI.Label(new Rect(20, 20, 400, 40), $"Update time: <b>{ObjectRecognizer.Delay}</b> ms");
     }
 
     void OnApplicationQuit()
@@ -65,8 +65,6 @@ public class RecognizerController : MonoBehaviour
 
         while (true)
         {
-            watch.Restart();
-
             try
             {
                 var texture = ToTexture2D(_webCam);
@@ -79,6 +77,7 @@ public class RecognizerController : MonoBehaviour
             }
 
             _updateTime = watch.ElapsedMilliseconds;
+            watch.Restart();
         }
     }
 
