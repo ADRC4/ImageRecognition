@@ -81,7 +81,7 @@ class ObjectRecognizer : IDisposable
                     ts.Dispose();
                 }
 
-                return GetDetectedObjects(boxes, scores, classes);
+                return GetRecognizedObjects(boxes, scores, classes);
             }
         });
     }
@@ -103,7 +103,7 @@ class ObjectRecognizer : IDisposable
         return TFTensor.FromBuffer(shape, floatValues, 0, floatValues.Length);
     }
 
-    private IEnumerable<RecognizedObject> GetDetectedObjects(float[,,] boxes, float[,] scores, float[,] classes)
+    private IEnumerable<RecognizedObject> GetRecognizedObjects(float[,,] boxes, float[,] scores, float[,] classes)
     {
         var x = boxes.GetLength(0);
         var y = boxes.GetLength(1);
