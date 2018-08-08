@@ -17,7 +17,6 @@ public class RecognizerController : MonoBehaviour
     WebCamTexture _webCam;
     ObjectRecognizer _recognizer;
     List<RecognizedObject> _recognizedObjects = new List<RecognizedObject>();
-    long _updateTime;
 
     void Start()
     {
@@ -75,9 +74,6 @@ public class RecognizerController : MonoBehaviour
                 Debug.Log($"Recognition loop interrupted...");
                 break;
             }
-
-            _updateTime = watch.ElapsedMilliseconds;
-            watch.Restart();
         }
     }
 
